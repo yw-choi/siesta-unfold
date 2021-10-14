@@ -21,7 +21,7 @@ def main():
     # run parameters
     ################################################
     fdf_file = f'./input.fdf'
-    ecut = 500  # eV
+    ecut = 100  # eV
     a = 2.471153
     c = 25
     cell_uc = np.array([
@@ -29,8 +29,8 @@ def main():
         [np.sqrt(3)/2*a, +1/2*a, 0],
         [0,      0, c]
     ])
-    lowest_band = 400
-    highest_band = 500
+    lowest_band = 1
+    highest_band = 100
 
     ################################################
     # MPI Setup
@@ -110,7 +110,7 @@ class Unfold:
         self._siesta = sisl.io.siesta._siesta
 
         # setup wfsx
-        self.wfsx_file = f'{self.outdir}/{self.system_label}.selected.WFSX'
+        self.wfsx_file = f'{self.outdir}/{self.system_label}.bands.WFSX'
         if not os.path.exists(self.wfsx_file):
             self.error('[Error] .WFSX file not found')
             return
@@ -140,6 +140,7 @@ class Unfold:
         self.igvec_uc = self.find_igvec(self.bcell_uc, self.ecut)
         self.gvec_uc = self.igvec_uc.dot(self.bcell_uc)
 
+        # parallelize over g vectors
         self.gsplit = np.array_split(self.gvec_uc, self.mpi_nprocs)
 
         self.timer.stop_clock('init')
@@ -223,11 +224,7 @@ class Unfold:
                 ftfac = np.zeros(self.nou, dtype=np.complex128)
 
                 for ia, io in self.geom.iter_orbitals(local=False):
-                    # ftfac[io] = PAO_FT[io2isp[io]][io2ioa[io]]
-                    if ia >= 881:
-                        ftfac[io] = PAO_FT[io2isp[io]][io2ioa[io]]
-                    else:
-                        ftfac[io] = PAO_FT[io2isp[io]][io2ioa[io]]*0.1
+                    ftfac[io] = PAO_FT[io2isp[io]][io2ioa[io]]
                 orbfac = phase[ig, io2ia[:]] * ftfac
                 self.timer.stop_clock(f'orbfac')
 
